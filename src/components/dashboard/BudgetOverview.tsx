@@ -1,15 +1,25 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
-import { Tables } from '@/integrations/supabase/types';
 import { Skeleton } from '../ui/skeleton';
 import { EmptyState } from '../common/EmptyState';
 
+type BudgetWithRelations = {
+    id: string;
+    name: string;
+    amount: number;
+    spent: number | null;
+    categories: {
+        name: string;
+        color: string | null;
+    } | null;
+}
 
 interface BudgetOverviewProps {
-    budgets: Tables<'budgets'>[] | undefined;
+    budgets: BudgetWithRelations[] | undefined;
     isLoading: boolean;
 }
 
@@ -21,8 +31,8 @@ export const BudgetOverview: React.FC<BudgetOverviewProps> = ({ budgets, isLoadi
           <Icons.pieChart className="w-5 h-5" />
           <span>Budget Overview</span>
         </CardTitle>
-        <Button variant="outline" size="sm">
-          Manage Budgets
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/budgets">Manage Budgets</Link>
         </Button>
       </CardHeader>
       <CardContent>
@@ -53,7 +63,7 @@ export const BudgetOverview: React.FC<BudgetOverviewProps> = ({ budgets, isLoadi
               <div key={index} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <span className="font-medium">{item.name}</span>
+                    <span className="font-medium">{item.name} ({item.categories?.name})</span>
                   </div>
                   <div className="text-sm text-muted-foreground">
                     ${spent.toFixed(2)} / ${item.amount.toFixed(2)}
