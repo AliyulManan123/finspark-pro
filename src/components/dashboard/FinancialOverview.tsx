@@ -1,43 +1,55 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icons } from '@/components/ui/icons';
+import { Skeleton } from '../ui/skeleton';
 
-const financialData = [
-  {
-    title: 'Total Balance',
-    value: '$12,345.67',
-    change: '+12.5%',
-    changeType: 'positive' as const,
-    icon: Icons.wallet,
-    description: 'Across all accounts',
-  },
-  {
-    title: 'Monthly Income',
-    value: '$5,240.00',
-    change: '+3.2%',
-    changeType: 'positive' as const,
-    icon: Icons.trendingUp,
-    description: 'This month',
-  },
-  {
-    title: 'Monthly Expenses',
-    value: '$3,850.25',
-    change: '-5.8%',
-    changeType: 'negative' as const,
-    icon: Icons.trendingDown,
-    description: 'This month',
-  },
-  {
-    title: 'Net Worth',
-    value: '$45,890.12',
-    change: '+8.7%',
-    changeType: 'positive' as const,
-    icon: Icons.barChart,
-    description: 'Total assets',
-  },
-];
+interface FinancialOverviewProps {
+  isLoading: boolean;
+  data: {
+    totalBalance: number;
+    monthlyIncome: number;
+    monthlyExpenses: number;
+    netWorth: number;
+  } | undefined;
+}
 
-export const FinancialOverview = () => {
+const formatCurrency = (value: number | undefined) => {
+    if (value === undefined) return '$--';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(value);
+  };
+
+export const FinancialOverview: React.FC<FinancialOverviewProps> = ({ data, isLoading }) => {
+
+    const financialData = [
+        {
+          title: 'Total Balance',
+          value: formatCurrency(data?.totalBalance),
+          icon: Icons.wallet,
+          description: 'Across all accounts',
+        },
+        {
+          title: 'Monthly Income',
+          value: formatCurrency(data?.monthlyIncome),
+          icon: Icons.trendingUp,
+          description: 'This month',
+        },
+        {
+          title: 'Monthly Expenses',
+          value: formatCurrency(data?.monthlyExpenses),
+          icon: Icons.trendingDown,
+          description: 'This month',
+        },
+        {
+          title: 'Net Worth',
+          value: formatCurrency(data?.netWorth),
+          icon: Icons.barChart,
+          description: 'Total assets',
+        },
+      ];
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {financialData.map((item, index) => (
@@ -51,26 +63,23 @@ export const FinancialOverview = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="text-2xl font-bold">{item.value}</div>
-              <div className="flex items-center space-x-1">
-                <span
-                  className={`text-sm font-medium ${
-                    item.changeType === 'positive' 
-                      ? 'text-success' 
-                      : 'text-destructive'
-                  }`}
-                >
-                  {item.change}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {item.description}
-                </span>
-              </div>
-            </div>
+            {isLoading ? (
+                <div className="space-y-2">
+                    <Skeleton className="h-8 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    <div className="text-2xl font-bold">{item.value}</div>
+                    <p className="text-sm text-muted-foreground">
+                        {item.description}
+                    </p>
+                </div>
+            )}
           </CardContent>
         </Card>
       ))}
     </div>
   );
 };
+
