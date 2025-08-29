@@ -1,41 +1,58 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
+import { AddTransactionDialog } from './AddTransactionDialog';
 
-const quickActions = [
+const actionItems = [
   {
     title: 'Add Income',
     description: 'Record new income',
     icon: Icons.plus,
-    color: 'text-success',
-    bgColor: 'bg-success/10',
+    color: 'text-green-500',
+    bgColor: 'bg-green-500/10',
+    type: 'income' as const,
   },
   {
     title: 'Add Expense',
     description: 'Record new expense',
     icon: Icons.minus,
-    color: 'text-destructive',
-    bgColor: 'bg-destructive/10',
+    color: 'text-red-500',
+    bgColor: 'bg-red-500/10',
+    type: 'expense' as const,
   },
   {
     title: 'Transfer Funds',
     description: 'Between accounts',
     icon: Icons.arrowLeftRight,
-    color: 'text-primary',
-    bgColor: 'bg-primary/10',
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-500/10',
+    type: 'transfer' as const,
   },
   {
     title: 'Set Budget',
     description: 'Create new budget',
     icon: Icons.target,
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-500/10',
+    type: 'budget' as const,
   },
 ];
 
 export const QuickActions = () => {
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [dialogType, setDialogType] = useState<'income' | 'expense'>('expense');
+
+    const handleActionClick = (type: 'income' | 'expense' | 'transfer' | 'budget') => {
+        if (type === 'income' || type === 'expense') {
+            setDialogType(type);
+            setIsDialogOpen(true);
+        }
+        // TODO: Implement other actions
+    }
+
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
@@ -44,11 +61,12 @@ export const QuickActions = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {quickActions.map((action, index) => (
+        {actionItems.map((action, index) => (
           <Button
             key={index}
             variant="ghost"
             className="w-full justify-start h-auto p-4"
+            onClick={() => handleActionClick(action.type)}
           >
             <div className="flex items-center space-x-3 w-full">
               <div className={`w-10 h-10 rounded-lg ${action.bgColor} flex items-center justify-center`}>
@@ -65,5 +83,12 @@ export const QuickActions = () => {
         ))}
       </CardContent>
     </Card>
+    <AddTransactionDialog 
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        defaultType={dialogType}
+    />
+    </>
   );
 };
+
