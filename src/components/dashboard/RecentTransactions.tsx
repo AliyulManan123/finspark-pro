@@ -2,56 +2,16 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
+import { Tables } from '@/integrations/supabase/types';
+import { Skeleton } from '../ui/skeleton';
+import { EmptyState } from '../common/EmptyState';
 
-const recentTransactions = [
-  {
-    id: 1,
-    description: 'Salary Payment',
-    amount: 5240.00,
-    type: 'income' as const,
-    category: 'Salary',
-    date: '2024-01-15',
-    account: 'Checking Account',
-  },
-  {
-    id: 2,
-    description: 'Grocery Shopping',
-    amount: -120.50,
-    type: 'expense' as const,
-    category: 'Food',
-    date: '2024-01-14',
-    account: 'Credit Card',
-  },
-  {
-    id: 3,
-    description: 'Electric Bill',
-    amount: -89.25,
-    type: 'expense' as const,
-    category: 'Utilities',
-    date: '2024-01-13',
-    account: 'Checking Account',
-  },
-  {
-    id: 4,
-    description: 'Investment Dividend',
-    amount: 45.80,
-    type: 'income' as const,
-    category: 'Investment',
-    date: '2024-01-12',
-    account: 'Investment Account',
-  },
-  {
-    id: 5,
-    description: 'Gas Station',
-    amount: -65.00,
-    type: 'expense' as const,
-    category: 'Transportation',
-    date: '2024-01-11',
-    account: 'Credit Card',
-  },
-];
+interface RecentTransactionsProps {
+    transactions: Tables<'transactions'>[] | undefined;
+    isLoading: boolean;
+}
 
-export const RecentTransactions = () => {
+export const RecentTransactions: React.FC<RecentTransactionsProps> = ({ transactions, isLoading }) => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -65,7 +25,29 @@ export const RecentTransactions = () => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {recentTransactions.map((transaction) => (
+          {isLoading && Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between p-3">
+                <div className="flex items-center space-x-3">
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <div className="space-y-1">
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-4 w-48" />
+                    </div>
+                </div>
+                <div className="text-right space-y-1">
+                    <Skeleton className="h-5 w-20 ml-auto" />
+                    <Skeleton className="h-4 w-24 ml-auto" />
+                </div>
+            </div>
+          ))}
+          {!isLoading && (!transactions || transactions.length === 0) && (
+            <EmptyState 
+                icon="receipt"
+                title="No Transactions Yet"
+                description="Your recent transactions will appear here once you add them."
+            />
+          )}
+          {!isLoading && transactions && transactions.map((transaction) => (
             <div
               key={transaction.id}
               className="flex items-center justify-between p-3 rounded-lg border"
@@ -74,8 +56,8 @@ export const RecentTransactions = () => {
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     transaction.type === 'income'
-                      ? 'bg-success/10 text-success'
-                      : 'bg-destructive/10 text-destructive'
+                      ? 'bg-green-500/10 text-green-500'
+                      : 'bg-red-500/10 text-red-500'
                   }`}
                 >
                   {transaction.type === 'income' ? (
@@ -87,7 +69,8 @@ export const RecentTransactions = () => {
                 <div>
                   <div className="font-medium">{transaction.description}</div>
                   <div className="text-sm text-muted-foreground">
-                    {transaction.category} • {transaction.account}
+                    {/* TODO: Join with categories and accounts table to show names */}
+                    {transaction.category_id?.substring(0, 8)} • {transaction.account_id.substring(0,8)}
                   </div>
                 </div>
               </div>
@@ -95,7 +78,7 @@ export const RecentTransactions = () => {
                 <div
                   className={`font-semibold ${
                     transaction.type === 'income'
-                      ? 'text-success'
+                      ? 'text-green-500'
                       : 'text-foreground'
                   }`}
                 >
@@ -103,7 +86,7 @@ export const RecentTransactions = () => {
                   ${Math.abs(transaction.amount).toFixed(2)}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {new Date(transaction.date).toLocaleDateString()}
+                  {new Date(transaction.transaction_date).toLocaleDateString()}
                 </div>
               </div>
             </div>
@@ -113,3 +96,4 @@ export const RecentTransactions = () => {
     </Card>
   );
 };
+
