@@ -1,13 +1,28 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
-import { Tables } from '@/integrations/supabase/types';
 import { Skeleton } from '../ui/skeleton';
 import { EmptyState } from '../common/EmptyState';
 
+// Perluas tipe transaksi untuk menyertakan relasi
+type TransactionWithRelations = {
+    id: string;
+    description: string | null;
+    amount: number;
+    type: "income" | "expense" | "transfer";
+    transaction_date: string;
+    categories: {
+        name: string;
+    } | null;
+    accounts: {
+        name: string;
+    } | null;
+}
+
 interface RecentTransactionsProps {
-    transactions: Tables<'transactions'>[] | undefined;
+    transactions: TransactionWithRelations[] | undefined;
     isLoading: boolean;
 }
 
@@ -19,8 +34,8 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({ transact
           <Icons.receipt className="w-5 h-5" />
           <span>Recent Transactions</span>
         </CardTitle>
-        <Button variant="outline" size="sm">
-          View All
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/transactions">View All</Link>
         </Button>
       </CardHeader>
       <CardContent>
@@ -69,8 +84,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({ transact
                 <div>
                   <div className="font-medium">{transaction.description}</div>
                   <div className="text-sm text-muted-foreground">
-                    {/* TODO: Join with categories and accounts table to show names */}
-                    {transaction.category_id?.substring(0, 8)} • {transaction.account_id.substring(0,8)}
+                    {transaction.categories?.name || 'Uncategorized'} • {transaction.accounts?.name}
                   </div>
                 </div>
               </div>
