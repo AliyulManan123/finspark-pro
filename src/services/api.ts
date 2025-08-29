@@ -2,51 +2,54 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert } from '@/integrations/supabase/types';
 import { PostgrestError } from '@supabase/supabase-js';
 
-// Fetch recent transactions with a limit
+// Transaksi
 export const getRecentTransactions = async (limit = 5): Promise<Tables<'transactions'>[]> => {
   const { data, error } = await supabase
     .from('transactions')
-    .select('*')
+    .select('*, categories(name, color), accounts(name)')
     .order('transaction_date', { ascending: false })
     .limit(limit);
 
-  if (error) {
-    console.error('Error fetching recent transactions:', error);
-    throw error;
-  }
-  return data || [];
+  if (error) throw error;
+  return data as any || [];
 };
 
-// Fetch all transactions for chart
 export const getAllTransactions = async (): Promise<Tables<'transactions'>[]> => {
     const { data, error } = await supabase
       .from('transactions')
-      .select('*')
+      .select('*, categories(name, color), accounts(name)')
       .order('transaction_date', { ascending: false });
   
-    if (error) {
-      console.error('Error fetching all transactions:', error);
-      throw error;
-    }
-    return data || [];
+    if (error) throw error;
+    return data as any || [];
   };
 
-// Fetch budget overview
+export const addTransaction = async (transaction: TablesInsert<'transactions'>): Promise<{ data: Tables<'transactions'>[] | null, error: PostgrestError | null }> => {
+    const { data, error } = await supabase.from('transactions').insert(transaction).select();
+    // Di dunia nyata, update balance akun sebaiknya dilakukan di backend via trigger/function
+    // Untuk sekarang, kita lakukan invalidasi query agar data di-fetch ulang
+    return { data, error };
+}
+
+// Anggaran (Budget)
 export const getBudgets = async (): Promise<Tables<'budgets'>[]> => {
     const { data, error } = await supabase
       .from('budgets')
-      .select('*')
+      .select('*, categories(name, color)')
       .eq('is_active', true)
       .order('created_at', { ascending: false });
     
-    if (error) {
-      console.error('Error fetching budgets:', error);
-      throw error;
-    }
-    return data || [];
+    if (error) throw error;
+    return data as any || [];
 };
 
-// Fetch savings goals
+export const addBudget = async (budget: TablesInsert<'budgets'>): Promise<{ data: Tables<'budgets'>[] | null, error: PostgrestError | null }> => {
+    const { data, error } = await supabase.from('budgets').insert(budget).select();
+    return { data, error };
+}
+
+
+// Tujuan Menabung (Savings Goals)
 export const getSavingsGoals = async (): Promise<Tables<'savings_goals'>[]> => {
     const { data, error } = await supabase
       .from('savings_goals')
@@ -54,21 +57,22 @@ export const getSavingsGoals = async (): Promise<Tables<'savings_goals'>[]> => {
       .eq('status', 'active')
       .order('target_date', { ascending: true });
 
-    if (error) {
-      console.error('Error fetching savings goals:', error);
-      throw error;
-    }
+    if (error) throw error;
     return data || [];
 };
 
-// Fetch financial summary data
+export const addGoal = async (goal: TablesInsert<'savings_goals'>): Promise<{ data: Tables<'savings_goals'>[] | null, error: PostgrestError | null }> => {
+    const { data, error } = await supabase.from('savings_goals').insert(goal).select();
+    return { data, error };
+}
+
+// Data Keuangan & Akun
 export const getFinancialSummary = async () => {
     const { data: accounts, error: accountsError } = await supabase.from('accounts').select('balance');
     if (accountsError) throw accountsError;
   
     const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
   
-    // For income and expenses, we'll sum transactions from the current month
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
   
@@ -94,27 +98,19 @@ export const getFinancialSummary = async () => {
       totalBalance,
       monthlyIncome,
       monthlyExpenses,
-      netWorth: totalBalance, // Simplified for now
+      netWorth: totalBalance, // Disederhanakan untuk saat ini
     };
   };
 
-// Fetch accounts for selection
 export const getAccounts = async (): Promise<Tables<'accounts'>[]> => {
     const { data, error } = await supabase.from('accounts').select('*').eq('is_active', true);
     if (error) throw error;
     return data || [];
 }
 
-// Fetch categories for selection
 export const getCategories = async (type: 'income' | 'expense'): Promise<Tables<'categories'>[]> => {
     const { data, error } = await supabase.from('categories').select('*').eq('type', type);
     if (error) throw error;
     return data || [];
-}
-
-// Add a new transaction
-export const addTransaction = async (transaction: TablesInsert<'transactions'>): Promise<{ data: Tables<'transactions'>[] | null, error: PostgrestError | null }> => {
-    const { data, error } = await supabase.from('transactions').insert(transaction).select();
-    return { data, error };
 }
 
