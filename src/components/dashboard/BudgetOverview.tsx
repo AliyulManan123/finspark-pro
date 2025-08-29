@@ -3,35 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
+import { Tables } from '@/integrations/supabase/types';
+import { Skeleton } from '../ui/skeleton';
+import { EmptyState } from '../common/EmptyState';
 
-const budgetCategories = [
-  {
-    category: 'Food & Dining',
-    spent: 450,
-    budget: 600,
-    color: 'bg-blue-500',
-  },
-  {
-    category: 'Transportation',
-    spent: 280,
-    budget: 300,
-    color: 'bg-green-500',
-  },
-  {
-    category: 'Entertainment',
-    spent: 150,
-    budget: 200,
-    color: 'bg-purple-500',
-  },
-  {
-    category: 'Utilities',
-    spent: 220,
-    budget: 250,
-    color: 'bg-orange-500',
-  },
-];
 
-export const BudgetOverview = () => {
+interface BudgetOverviewProps {
+    budgets: Tables<'budgets'>[] | undefined;
+    isLoading: boolean;
+}
+
+export const BudgetOverview: React.FC<BudgetOverviewProps> = ({ budgets, isLoading }) => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -45,19 +27,36 @@ export const BudgetOverview = () => {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {budgetCategories.map((item, index) => {
-            const percentage = (item.spent / item.budget) * 100;
+        {isLoading && Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+                <div className="flex justify-between">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-4 w-20" />
+                </div>
+                <Skeleton className="h-2 w-full" />
+                <Skeleton className="h-3 w-16" />
+            </div>
+        ))}
+        {!isLoading && (!budgets || budgets.length === 0) && (
+            <EmptyState
+                icon="pieChart"
+                title="No Budgets Created"
+                description="Create budgets to track your spending against your goals."
+            />
+        )}
+          {!isLoading && budgets && budgets.map((item, index) => {
+            const spent = item.spent || 0;
+            const percentage = (spent / item.amount) * 100;
             const isOverBudget = percentage > 100;
             
             return (
               <div key={index} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <div className={`w-3 h-3 rounded-full ${item.color}`} />
-                    <span className="font-medium">{item.category}</span>
+                    <span className="font-medium">{item.name}</span>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    ${item.spent} / ${item.budget}
+                    ${spent.toFixed(2)} / ${item.amount.toFixed(2)}
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -90,3 +89,4 @@ export const BudgetOverview = () => {
     </Card>
   );
 };
+
