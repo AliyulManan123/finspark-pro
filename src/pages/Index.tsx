@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +28,12 @@ const features = [
 ];
 
 const Index = () => {
+  const featuresRef = useRef<HTMLElement>(null);
+
+  const scrollToFeatures = () => {
+    featuresRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
@@ -66,7 +72,7 @@ const Index = () => {
                 Start Free Today
               </Button>
             </Link>
-            <Button variant="outline" size="lg" className="text-lg px-8">
+            <Button variant="outline" size="lg" className="text-lg px-8" onClick={scrollToFeatures}>
               <Icons.activity className="w-5 h-5 mr-2" />
               View Demo
             </Button>
@@ -75,7 +81,7 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section className="container mx-auto px-4 py-20">
+      <section ref={featuresRef} className="container mx-auto px-4 py-20 scroll-mt-20">
         <div className="text-center space-y-4 mb-16">
           <h2 className="text-3xl font-bold">Powerful Features</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
