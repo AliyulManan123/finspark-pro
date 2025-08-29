@@ -3,6 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
 import { AddTransactionDialog } from './AddTransactionDialog';
+import { AddGoalDialog } from './AddGoalDialog';
+import { AddBudgetDialog } from './AddBudgetDialog';
+import { TransferFundsDialog } from './TransferFundsDialog';
+import { useToast } from '@/hooks/use-toast';
 
 const actionItems = [
   {
@@ -40,15 +44,17 @@ const actionItems = [
 ];
 
 export const QuickActions = () => {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [dialogType, setDialogType] = useState<'income' | 'expense'>('expense');
+    const [dialog, setDialog] = useState<string | null>(null);
+    const [transactionType, setTransactionType] = useState<'income' | 'expense'>('expense');
+    const { toast } = useToast();
 
     const handleActionClick = (type: 'income' | 'expense' | 'transfer' | 'budget') => {
         if (type === 'income' || type === 'expense') {
-            setDialogType(type);
-            setIsDialogOpen(true);
+            setTransactionType(type);
+            setDialog('transaction');
         }
-        // TODO: Implement other actions
+        if (type === 'transfer') setDialog('transfer');
+        if (type === 'budget') setDialog('budget');
     }
 
   return (
@@ -83,10 +89,19 @@ export const QuickActions = () => {
         ))}
       </CardContent>
     </Card>
+
     <AddTransactionDialog 
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        defaultType={dialogType}
+        open={dialog === 'transaction'}
+        onOpenChange={(open) => !open && setDialog(null)}
+        defaultType={transactionType}
+    />
+    <AddBudgetDialog 
+        open={dialog === 'budget'}
+        onOpenChange={(open) => !open && setDialog(null)}
+    />
+    <TransferFundsDialog
+        open={dialog === 'transfer'}
+        onOpenChange={(open) => !open && setDialog(null)}
     />
     </>
   );
