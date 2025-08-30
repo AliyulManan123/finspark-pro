@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -30,57 +30,53 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { addTransaction, getAccounts, getCategories } from '@/services/api';
+import { addTransaction, getAccounts } from '@/services/api';
 import { Icons } from '../ui/icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { TablesInsert } from '@/integrations/supabase/types';
 
-const transactionSchema = z.object({
+const transferSchema = z.object({
   description: z.string().min(2, { message: 'Description must be at least 2 characters.' }),
   amount: z.coerce.number().positive({ message: 'Amount must be positive.' }),
-  type: z.enum(['income', 'expense']),
-  account_id: z.string({ required_error: 'Please select an account.' }),
-  category_id: z.string({ required_error: 'Please select a category.' }),
+  from_account_id: z.string({ required_error: 'Please select source account.' }),
+  to_account_id: z.string({ required_error: 'Please select destination account.' }),
+}).refine((data) => data.from_account_id !== data.to_account_id, {
+  message: "Source and destination accounts must be different",
+  path: ["to_account_id"],
 });
 
-type TransactionFormData = z.infer<typeof transactionSchema>;
+type TransferFormData = z.infer<typeof transferSchema>;
 
-interface AddTransactionDialogProps {
+interface TransferFundsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultType?: 'income' | 'expense';
 }
 
-export const AddTransactionDialog: React.FC<AddTransactionDialogProps> = ({
+export const TransferFundsDialog: React.FC<TransferFundsDialogProps> = ({
   open,
   onOpenChange,
-  defaultType = 'expense',
 }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [transactionType, setTransactionType] = useState<'income' | 'expense'>(defaultType);
 
-  const form = useForm<TransactionFormData>({
-    resolver: zodResolver(transactionSchema),
+  const form = useForm<TransferFormData>({
+    resolver: zodResolver(transferSchema),
     defaultValues: {
       description: '',
       amount: 0,
-      type: defaultType,
     },
   });
-  
+
   React.useEffect(() => {
-    form.reset({
+    if (open) {
+      form.reset({
         description: '',
         amount: 0,
-        type: defaultType,
-        account_id: undefined,
-        category_id: undefined
-    });
-    setTransactionType(defaultType);
-  }, [open, defaultType, form]);
-
+        from_account_id: undefined,
+        to_account_id: undefined,
+      });
+    }
+  }, [open, form]);
 
   const { data: accounts, isLoading: isLoadingAccounts } = useQuery({
     queryKey: ['accounts'],
@@ -88,16 +84,37 @@ export const AddTransactionDialog: React.FC<AddTransactionDialogProps> = ({
     enabled: open,
   });
 
-  const { data: categories, isLoading: isLoadingCategories } = useQuery({
-    queryKey: ['categories', transactionType],
-    queryFn: () => getCategories(transactionType),
-    enabled: open,
-  });
-  
-  const addTransactionMutation = useMutation({
-    mutationFn: addTransaction,
+  const transferMutation = useMutation({
+    mutationFn: async (data: TransferFormData) => {
+      if (!user) throw new Error('User not authenticated');
+      
+      // Create two transactions: one outgoing from source, one incoming to destination
+      const outgoingTransaction = {
+        user_id: user.id,
+        account_id: data.from_account_id,
+        to_account_id: data.to_account_id,
+        amount: -Math.abs(data.amount), // Negative for outgoing
+        type: 'transfer' as const,
+        description: `Transfer to ${accounts?.find(a => a.id === data.to_account_id)?.name || 'account'}: ${data.description}`,
+      };
+
+      const incomingTransaction = {
+        user_id: user.id,
+        account_id: data.to_account_id,
+        to_account_id: data.from_account_id,
+        amount: Math.abs(data.amount), // Positive for incoming
+        type: 'transfer' as const,
+        description: `Transfer from ${accounts?.find(a => a.id === data.from_account_id)?.name || 'account'}: ${data.description}`,
+      };
+
+      // Execute both transactions
+      await Promise.all([
+        addTransaction(outgoingTransaction),
+        addTransaction(incomingTransaction)
+      ]);
+    },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Transaction added successfully.' });
+      toast({ title: 'Success', description: 'Transfer completed successfully.' });
       queryClient.invalidateQueries({ queryKey: ['recentTransactions'] });
       queryClient.invalidateQueries({ queryKey: ['financialSummary'] });
       queryClient.invalidateQueries({ queryKey: ['allTransactions'] });
@@ -106,64 +123,27 @@ export const AddTransactionDialog: React.FC<AddTransactionDialogProps> = ({
     onError: (error) => {
       toast({
         title: 'Error',
-        description: `Failed to add transaction: ${error.message}`,
+        description: `Failed to complete transfer: ${error.message}`,
         variant: 'destructive',
       });
     },
   });
 
-  const onSubmit = (values: TransactionFormData) => {
-    if (!user) return;
-    const transactionData: TablesInsert<'transactions'> = {
-      user_id: user.id,
-      account_id: values.account_id,
-      category_id: values.category_id,
-      amount: values.type === 'expense' ? -Math.abs(values.amount) : Math.abs(values.amount),
-      type: values.type,
-      description: values.description,
-    };
-    addTransactionMutation.mutate(transactionData);
+  const onSubmit = (values: TransferFormData) => {
+    transferMutation.mutate(values);
   };
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Transaction</DialogTitle>
+          <DialogTitle>Transfer Funds</DialogTitle>
           <DialogDescription>
-            Fill in the details below to record a new transaction.
+            Move money between your accounts.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type</FormLabel>
-                  <Select
-                    onValueChange={(value: 'income' | 'expense') => {
-                      field.onChange(value);
-                      setTransactionType(value);
-                      form.setValue('category_id', '');
-                    }}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select transaction type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="expense">Expense</SelectItem>
-                      <SelectItem value="income">Income</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="description"
@@ -171,13 +151,13 @@ export const AddTransactionDialog: React.FC<AddTransactionDialogProps> = ({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Groceries from ..." {...field} />
+                    <Input placeholder="e.g., Monthly savings transfer" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-             <FormField
+            <FormField
               control={form.control}
               name="amount"
               render={({ field }) => (
@@ -192,19 +172,21 @@ export const AddTransactionDialog: React.FC<AddTransactionDialogProps> = ({
             />
             <FormField
               control={form.control}
-              name="account_id"
+              name="from_account_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Account</FormLabel>
+                  <FormLabel>From Account</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger disabled={isLoadingAccounts}>
-                        <SelectValue placeholder="Select an account" />
+                        <SelectValue placeholder="Select source account" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {accounts?.map((account) => (
-                        <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name} (${account.balance.toString()})
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -214,19 +196,21 @@ export const AddTransactionDialog: React.FC<AddTransactionDialogProps> = ({
             />
             <FormField
               control={form.control}
-              name="category_id"
+              name="to_account_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                  <FormLabel>To Account</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger disabled={isLoadingCategories}>
-                        <SelectValue placeholder="Select a category" />
+                      <SelectTrigger disabled={isLoadingAccounts}>
+                        <SelectValue placeholder="Select destination account" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categories?.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                      {accounts?.map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name} (${account.balance.toString()})
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -235,11 +219,11 @@ export const AddTransactionDialog: React.FC<AddTransactionDialogProps> = ({
               )}
             />
             <DialogFooter>
-              <Button type="submit" disabled={addTransactionMutation.isPending}>
-                {addTransactionMutation.isPending && (
+              <Button type="submit" disabled={transferMutation.isPending}>
+                {transferMutation.isPending && (
                   <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Add Transaction
+                Transfer Funds
               </Button>
             </DialogFooter>
           </form>
@@ -248,4 +232,3 @@ export const AddTransactionDialog: React.FC<AddTransactionDialogProps> = ({
     </Dialog>
   );
 };
-

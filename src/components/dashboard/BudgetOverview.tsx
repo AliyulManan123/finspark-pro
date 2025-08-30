@@ -7,20 +7,9 @@ import { Icons } from '@/components/ui/icons';
 import { Skeleton } from '../ui/skeleton';
 import { EmptyState } from '../common/EmptyState';
 
-type BudgetWithRelations = {
-    id: string;
-    name: string;
-    amount: number;
-    spent: number | null;
-    categories: {
-        name: string;
-        color: string | null;
-    } | null;
-}
-
 interface BudgetOverviewProps {
-    budgets: BudgetWithRelations[] | undefined;
-    isLoading: boolean;
+  budgets: any[];
+  isLoading: boolean;
 }
 
 export const BudgetOverview: React.FC<BudgetOverviewProps> = ({ budgets, isLoading }) => {
@@ -54,7 +43,7 @@ export const BudgetOverview: React.FC<BudgetOverviewProps> = ({ budgets, isLoadi
                 description="Create budgets to track your spending against your goals."
             />
         )}
-          {!isLoading && budgets && budgets.map((item, index) => {
+          {!isLoading && budgets && budgets.map((item: any, index: number) => {
             const spent = item.spent || 0;
             const percentage = (spent / item.amount) * 100;
             const isOverBudget = percentage > 100;
@@ -99,4 +88,3 @@ export const BudgetOverview: React.FC<BudgetOverviewProps> = ({ budgets, isLoadi
     </Card>
   );
 };
-

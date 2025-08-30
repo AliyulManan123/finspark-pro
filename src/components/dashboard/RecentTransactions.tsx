@@ -6,24 +6,9 @@ import { Icons } from '@/components/ui/icons';
 import { Skeleton } from '../ui/skeleton';
 import { EmptyState } from '../common/EmptyState';
 
-// Perluas tipe transaksi untuk menyertakan relasi
-type TransactionWithRelations = {
-    id: string;
-    description: string | null;
-    amount: number;
-    type: "income" | "expense" | "transfer";
-    transaction_date: string;
-    categories: {
-        name: string;
-    } | null;
-    accounts: {
-        name: string;
-    } | null;
-}
-
 interface RecentTransactionsProps {
-    transactions: TransactionWithRelations[] | undefined;
-    isLoading: boolean;
+  transactions: any[];
+  isLoading: boolean;
 }
 
 export const RecentTransactions: React.FC<RecentTransactionsProps> = ({ transactions, isLoading }) => {
@@ -62,7 +47,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({ transact
                 description="Your recent transactions will appear here once you add them."
             />
           )}
-          {!isLoading && transactions && transactions.map((transaction) => (
+          {!isLoading && transactions && transactions.map((transaction: any) => (
             <div
               key={transaction.id}
               className="flex items-center justify-between p-3 rounded-lg border"
@@ -110,4 +95,3 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({ transact
     </Card>
   );
 };
-

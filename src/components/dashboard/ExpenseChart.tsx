@@ -1,75 +1,103 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Tables } from '@/integrations/supabase/types';
-import { Skeleton } from '../ui/skeleton';
-import { EmptyState } from '../common/EmptyState';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { getAllTransactions } from '@/services/api';
+import { Icons } from '@/components/ui/icons';
 
-interface ExpenseChartProps {
-  transactions: Tables<'transactions'>[] | undefined;
-  isLoading: boolean;
-}
+const COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
 
-const processChartData = (transactions: Tables<'transactions'>[]) => {
-    const monthlyData: { [key: string]: { income: number; expense: number } } = {};
-  
-    transactions.forEach(t => {
-      const month = new Date(t.transaction_date).toLocaleString('default', { month: 'short' });
-      if (!monthlyData[month]) {
-        monthlyData[month] = { income: 0, expense: 0 };
-      }
-      if (t.type === 'income') {
-        monthlyData[month].income += t.amount;
-      } else {
-        monthlyData[month].expense += Math.abs(t.amount);
-      }
-    });
-  
-    return Object.entries(monthlyData).map(([name, values]) => ({ name, ...values })).reverse();
-  };
+export const ExpenseChart = () => {
+  const { data: transactions = [], isLoading } = useQuery({
+    queryKey: ['allTransactions'],
+    queryFn: getAllTransactions,
+  });
 
-export const ExpenseChart: React.FC<ExpenseChartProps> = ({ transactions, isLoading }) => {
-    const chartData = transactions ? processChartData(transactions) : [];
+  // Process data for expense categories
+  const expenseData = React.useMemo(() => {
+    const categoryExpenses: Record<string, number> = {};
+    
+    transactions
+      .filter((t: any) => t.type === 'expense')
+      .forEach((transaction: any) => {
+        const categoryName = transaction.categories?.name || 'Uncategorized';
+        categoryExpenses[categoryName] = (categoryExpenses[categoryName] || 0) + Math.abs(transaction.amount);
+      });
+
+    return Object.entries(categoryExpenses)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6); // Top 6 categories
+  }, [transactions]);
+
+  const totalExpenses = expenseData.reduce((sum, item) => sum + item.value, 0);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Expense Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-64">
+            <Icons.spinner className="h-8 w-8 animate-spin" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (expenseData.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Expense Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-64 text-muted-foreground">
+            <div className="text-center">
+              <Icons.pieChart className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No expense data available</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Income vs. Expense</CardTitle>
-        <CardDescription>A look at your cash flow over recent months.</CardDescription>
+        <CardTitle>Expense Breakdown</CardTitle>
       </CardHeader>
       <CardContent>
-        <div style={{ width: '100%', height: 300 }}>
-        {isLoading && <Skeleton className="h-full w-full" />}
-        {!isLoading && (!chartData || chartData.length === 0) && (
-            <div className="h-full">
-                <EmptyState 
-                    icon="barChart"
-                    title="Not Enough Data"
-                    description="We'll show a chart here once you have more transactions."
-                />
-            </div>
-        )}
-        {!isLoading && chartData && chartData.length > 0 && (
-          <ResponsiveContainer>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => `$${value}`} />
-              <Tooltip
-                cursor={{ fill: 'hsl(var(--accent))' }}
-                contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))',
-                    borderColor: 'hsl(var(--border))'
-                }}
-              />
-              <Bar dataKey="income" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-            </BarChart>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={expenseData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {expenseData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Amount']} />
+            </PieChart>
           </ResponsiveContainer>
-        )}
+        </div>
+        <div className="mt-4">
+          <p className="text-sm text-muted-foreground">
+            Total Expenses: <span className="font-medium">${totalExpenses.toFixed(2)}</span>
+          </p>
         </div>
       </CardContent>
     </Card>
   );
 };
-

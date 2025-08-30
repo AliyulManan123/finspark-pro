@@ -9,8 +9,8 @@ import { EmptyState } from '../common/EmptyState';
 import { AddGoalDialog } from './AddGoalDialog';
 
 interface SavingsGoalsProps {
-    goals: Tables<'savings_goals'>[] | undefined;
-    isLoading: boolean;
+  goals: any[];
+  isLoading: boolean;
 }
 
 export const SavingsGoals: React.FC<SavingsGoalsProps> = ({ goals, isLoading }) => {
